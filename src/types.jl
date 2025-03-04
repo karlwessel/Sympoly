@@ -111,14 +111,14 @@ catch
 end
 function TermInterface.arguments(x::Polyform)
 	if !is_one(x.denom)
-		return [Polyform(x.p, one(x.p), x.fns), Polyform(x.denom, one(x.p), x.fns)]
+		return cleanup.([Polyform(x.p, one(x.p), x.fns), Polyform(x.denom, one(x.p), x.fns)]; recurse=false)
 	end
 
 	if is_gen(x.p) && haskey(x.fns, x.p)
 		return x.fns[x.p].args
 	end
 
-	return [p isa UniversalPolyRingElem ? Polyform(p, one(p), x.fns) : tonumber(p) for p in TermInterface.arguments(x.p)]
+	return [p isa UniversalPolyRingElem ? cleanup(Polyform(p, one(p), x.fns); recurse=false) : tonumber(p) for p in TermInterface.arguments(x.p)]
 end
 
 # basic operations
@@ -130,6 +130,10 @@ end
 function updatediv(nom, denom, fns)
 	q, r = divrem(nom, denom)
 	iszero(r) && return cleanup(Polyform(q, one(q), fns); recurse=false)
+	if iszero(q)
+		d = gcd(r, denom)
+		return cleanup(Polyform(r/d, denom/d, fns))
+	end
 	cleanup(Polyform(q*denom + r, denom, fns); recurse=false)
 end
 

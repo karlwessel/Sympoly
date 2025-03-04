@@ -10,14 +10,42 @@ function (i::Integral)(x)
 end
 
 Base.show(io::IO, i::Integral) = print(io, "∫d$(i.iv)[$(i.from) to $(i.to)]")
-	
-function occursin(p::Polyform, x)
-	p == x && return true
-	!iscall(p) && return false
-	for a in arguments(p)
+
+function Oscar.vars(p::Polyform)
+	r = []
+	if p.p isa RingElem
+		r = vcat(r, vars(p.p))
+	end
+	if p.denom isa RingElem
+		r = vcat(r, vars(p.denom))
+	end
+	unique(r)
+end
+
+function occursin(f::Fn, x)
+	for a in f.args
 		occursin(a, x) && return true
 	end
-	return false
+	return f.op isa Integral && f.op.iv == x
+end
+
+isgen(p::Polyform) = !iscall(p)
+function occursin(p::Polyform, x)
+	if isgen(x)
+		x.p in vars(p) && return true
+		for fn in values(p.fns)
+			occursin(fn, x) && return true
+		end
+		return false
+	else
+		p == x && return true
+
+		!iscall(p) && return false
+		for a in arguments(p)
+			occursin(a, x) && return true
+		end
+		return false
+	end
 end
 
 occursin(p::Number, x) = p == x
@@ -26,7 +54,7 @@ function integrate(p, x, from, to)
 	hasx(p) = occursin(p, x)
 	Integ = Integral(x, from, to)
 	!hasx(p) && return p*(to - from)
-	p == x && return 1//2*(to^2 - from^2)
+	isgen(p) && isgen(x) && p.p == x.p && return 1//2*(to^2 - from^2)
 
 	intmap = Dict([cos => sin, 
 		sin => x -> -cos(x)])

@@ -72,6 +72,8 @@ end
 	@test derive(sin(x), x) == cos(x)
 	@test derive(sin(y), x) == 0
 	@test derive(identity(2x), x) == 2
+
+	@test "$(derive(x/y, x))" == "(1 / y)"
 	
 	@test derive(f(x,y),x) isa Polyform
 	
@@ -104,4 +106,6 @@ end
 	@test iszero(integrate(sin(2x), x, 0, pi))
 	@test 2 == integrate(cos((1//2)*x), x, 0, pi)
 	
+	f = Functional(:f)
+	@test "$(integrate(f(x), x, 0, 1))" == "∫dx[0 to 1](f(x))"
 end

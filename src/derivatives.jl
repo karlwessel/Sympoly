@@ -10,7 +10,13 @@ Oscar.derivative
 Oscar.derivative(a::Number, x) = 0 # takes care of derive(Polyform(3), x)
 nonrecurse_derive(a::Polyform, iv) = Polyform((derivative(a.p, iv)*a.denom - derivative(a.denom, iv)*a.p), a.denom^2, a.fns)
 function derive(a::Polyform, iv)
-	p = sum([nonrecurse_derive(a, k)*derive(t, iv) for (k, t) in a.fns]; init = nonrecurse_derive(a, iv.p))
+	denom = cleanup(Polyform(a.denom, one(a.p), a.fns); recurse=false)
+	if !occursin(denom, iv)
+		p = sum([Polyform(derivative(a.p, k), a.denom, a.fns)*derive(t, iv) for (k, t) in a.fns]; init = Polyform(derivative(a.p, iv.p), a.denom, a.fns))
+	else
+		nom = cleanup(Polyform(a.p, one(a.p), a.fns); recurse=false)
+		p = (derive(nom, iv)*denom - derive(denom, iv)*nom) / denom^2
+	end
 	cleanup(p; recurse=false)
 end
 
