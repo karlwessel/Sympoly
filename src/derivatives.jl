@@ -29,6 +29,12 @@ end
 function derive(a::Fn, iv)
 	if a.op == identity
 		derive(only(a.args), iv)
+	elseif a.op isa Integral
+		if a.op.iv == iv
+			0
+		else
+			return a.op(derive(only(a.args), iv))
+		end
 	elseif a.op isa Derivative
 		r = derive(only(a.args), iv)
 		# need to check iszero against polynomial instead of polyform,

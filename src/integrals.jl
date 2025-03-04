@@ -34,10 +34,11 @@ function integrate(p, x, from, to)
 	op = operation(p)
 	if op == *
 		argswithx = filter(hasx, arguments(p))
+		argswithoutx = setdiff(arguments(p), argswithx)
 		if length(argswithx) > 1
-			return makeop(Integ, p)
+			return *(makeop(Integ, *(argswithx...)), argswithoutx...)
 		end
-		return *(Integ(only(argswithx)), setdiff(arguments(p), argswithx)...)
+		return *(Integ(only(argswithx)), argswithoutx...)
 	elseif op == +
 		return sum(map(Integ, arguments(p)))
 	elseif haskey(intmap, op)
