@@ -1,6 +1,7 @@
 using Sympoly
 using Test
-import SymbolicUtils: substitute, arguments, operation, iscall
+import SymbolicUtils: substitute, arguments, operation, iscall, @rule
+import SymbolicUtils.Rewriters: Postwalk, PassThrough
 import Oscar: QQ
 import Sympoly: Polyform, tonumber, isderived, occursin, fold
 
@@ -43,23 +44,29 @@ x, y = @variables x y
     @test sin(x) == Sympoly.cleanup(sin(x))
     @test (sin(x)*x/sin(x)) == x
     @test isempty((sin(x)*x/sin(x)).fns)
-    
+
+    @test fold(x^2) == x^2
+
+    f = Functional(:f)
+    @test f(x) isa Polyform
+end
+
+@testset "TermInterface" begin
     @test ((x^2 + y) * (x^2 + 2)).p == substitute(((x + y) * (x + 2)).p, Dict([x.p => x.p^2]))
     @test ((2 + y) * 4).p == substitute(((x + y) * (x + 2)).p, Dict([x.p => 2]))
-    
+
     @test x + 1 == substitute(sin(x) + 1, sin(x) => x)
     @test 3 == substitute(sin(x) + 1, sin(x) => 2)
     @test substitute(x + sin(x) + sin(sin(x + 1)), x => 1) == 1 + sin(1) + sin(sin(2))
     @test sin(2y) + sin(sin(2y)) + sin(sin(sin(2y) + 1)) ==
       substitute(x + sin(x) + sin(sin(x + 1)), x => sin(2y))
 
-    
     f = Functional(:f)
-    @test f(x) isa Polyform
     @test y + 2 == substitute(f(x) + y, f(x) => 2)
     @test y + f(2) == substitute(f(x) + y, x => 2)
 
-    @test fold(x^2) == x^2
+    r = @rule sin(~x)^2 => (1 - cos(2(~x))) / 2
+    @test Postwalk(PassThrough(r))(2+sin(2x)^2) == (1 - cos(4x)) / 2 + 2
 end
 
 @testset "derivatives" begin

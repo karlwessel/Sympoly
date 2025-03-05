@@ -124,6 +124,8 @@ function TermInterface.arguments(x::Polyform)
     return [p isa UniversalPolyRingElem ? cleanup(Polyform(p, one(p), x.fns); recurse=false) : tonumber(p) for p in TermInterface.arguments(x.p)]
 end
 
+SymbolicUtils.maketerm(T::Type{<:Polyform}, head, args, metadata) = head(args...)
+
 # basic operations
 function Oscar.vars(p::Polyform)
     r = []
