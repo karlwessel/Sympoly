@@ -36,6 +36,10 @@ x, y = @variables x y
     @test isone(((x+1) + x) / (2x+1))
     @test 2x+1 == ((((x+1) + x) / (x+1))*(x+1))
     @test y+2 == (x+2)*(y+2)/(x+2)
+
+    @test repr(2x/4y) == "(x / 2*y)"
+    @test repr(2/4y) == "((1) / 2*y)"
+    @test repr(2x/4) == "(x / (2))"
     
     @test sin(x) isa Polyform
     @test atan(x, y) isa Polyform

@@ -139,8 +139,8 @@ function Oscar.vars(p::Polyform)
 end
 
 function cleanup(a; recurse=true)
-    vs = repr.(vars(a))
-    newfns = Dict([s => recurse ? cleanup(t) : t for (s, t) in a.fns if repr(s) in vs])
+    vs = vars(a)
+    newfns = Dict([s => recurse ? cleanup(t) : t for (s, t) in a.fns if s in vs])
     Polyform(a.p, a.denom, newfns)
 end
 
@@ -148,17 +148,26 @@ function updatediv(nom, denom, fns)
     q, r = divrem(nom, denom)
     iszero(r) && return cleanup(Polyform(q, one(q), fns); recurse=false)
     if iszero(q)
-        d = gcd(r, denom)
-        return cleanup(Polyform(r/d, denom/d, fns))
+        d = gcd(r, denom) * gcd(content(r), content(denom))
+        return cleanup(Polyform(r/d, denom/d, fns); recurse=false)
     end
     cleanup(Polyform(q*denom + r, denom, fns); recurse=false)
+end
+
+function updatediv(nom, denom::Number, fns)
+    d = gcd(tonumber(content(nom)), denom)
+    Polyform(nom/d, tonumber(denom/d), fns)
+end
+function updatediv(nom::Number, denom, fns)
+    d = gcd(nom, tonumber(content(denom)))
+    Polyform(tonumber(nom/d), denom/d, fns)
 end
 
 Base.promote_rule(::Type{T}, ::Type{Polyform}) where T <: Number = Polyform
 Base.one(a::Polyform) = 1
 Base.zero(a::Polyform) = 0
-Base.:(*)(a::Polyform, b::Polyform) = updatediv(a.p*b.p, a.denom*b.denom, merge(a.fns, b.fns))
-Base.:(+)(a::Polyform, b::Polyform) = updatediv(a.p*b.denom + b.p*a.denom, a.denom*b.denom, merge(a.fns, b.fns))
+Base.:(*)(a::Polyform, b::Polyform) = isone(a.denom) && isone(b.denom) ? Polyform(a.p * b.p, one(a.p), merge(a.fns, b.fns)) : updatediv(a.p*b.p, a.denom*b.denom, merge(a.fns, b.fns))
+Base.:(+)(a::Polyform, b::Polyform) = isone(a.denom) && isone(b.denom) ? Polyform(a.p + b.p, one(a.p), merge(a.fns, b.fns)) : updatediv(a.p*b.denom + b.p*a.denom, a.denom*b.denom, merge(a.fns, b.fns))
 Base.:(/)(a::Polyform, b::Polyform) = updatediv(a.p*b.denom, a.denom*b.p, merge(a.fns, b.fns))
 Base.:(-)(a::Polyform, b::Polyform) = a + (-b)
 Base.:(-)(a::Polyform) = -1*a
