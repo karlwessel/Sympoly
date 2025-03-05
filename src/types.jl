@@ -7,6 +7,7 @@ struct Polyform <: Base.Real
 end
 
 Polyform(x) = Polyform(x, one(x), Dict([]))
+Polyform(x::AbstractFloat) = Polyform(tonumber(x))
 
 function Polyform(x::Symbol)
     sx = gen(R, x)
@@ -20,51 +21,51 @@ function Polyform(x::Symbol, fns)
 end
 
 function Base.show(io::IO, p::Polyform)
-	if isone(p.denom)
-		show(io, p.p)
-	else
-		print(io, "(")
-		if p.p isa Number || operation(p.p) == +
-			print(io,"(")
-		end
-		show(io, p.p)
-		if p.p isa Number || operation(p.p) == +
-			print(io,")")
-		end
-		print(io, " / ")
-		if p.denom isa Number || operation(p.denom) == +
-			print(io,"(")
-		end
-		show(io, p.denom)
-		if p.denom isa Number || operation(p.denom) == +
-			print(io,")")
-		end
-		print(io, ")")
-	end
+    if isone(p.denom)
+        show(io, p.p)
+    else
+        print(io, "(")
+        if p.p isa Number || operation(p.p) == +
+            print(io,"(")
+        end
+        show(io, p.p)
+        if p.p isa Number || operation(p.p) == +
+            print(io,")")
+        end
+        print(io, " / ")
+        if p.denom isa Number || operation(p.denom) == +
+            print(io,"(")
+        end
+        show(io, p.denom)
+        if p.denom isa Number || operation(p.denom) == +
+            print(io,")")
+        end
+        print(io, ")")
+    end
 end
 
 macro variables(xs...)
-	Polyform.(xs)
+    Polyform.(xs)
 end
 
 # Terminterface for universal poly
 TermInterface.isexpr(x::UniversalPolyRingElem) = iscall(x)
 TermInterface.iscall(x::UniversalPolyRingElem) = !is_gen(x)
 function TermInterface.operation(x::UniversalPolyRingElem)
-	if length(x) == 1 #e.g. 2xy^2
-		if length(vars(x)) == 1 && isone(coeff(x, 1)) #e.g. y^2 or sin(y)^2
-			v, e = only(powers(x))
-			if e == 1 #e.g. y or sin(y)
-				return (*)
-			else
-				return (^)
-			end
-		else
-			return (*)
-		end
-	else # e.g. x+y
-		return (+)
-	end
+    if length(x) == 1 #e.g. 2xy^2
+        if length(vars(x)) == 1 && isone(coeff(x, 1)) #e.g. y^2 or sin(y)^2
+            v, e = only(powers(x))
+            if e == 1 #e.g. y or sin(y)
+                return (*)
+            else
+                return (^)
+            end
+        else
+            return (*)
+        end
+    else # e.g. x+y
+        return (+)
+    end
 end
 isconstant(p) = length(p) == 1 && isone(monomial(p, 1))
 powers(m) = zip(vars(m), filter(x -> !iszero(x), exponent_vector(m, 1)))
@@ -77,16 +78,16 @@ function TermInterface.arguments(x::UniversalPolyRingElem)
         if !isone(c)
             [c, (v^pow for (v, pow) in powers(m))...]
         else
-			if length(vars(m)) == 1
-				v, e = only(powers(m))
-				if e == 1
-					return [v]
-				else
-					[v, e]
-				end
-			else
-	            [v^pow for (v, pow) in powers(m)]
-			end
+            if length(vars(m)) == 1
+                v, e = only(powers(m))
+                if e == 1
+                    return [v]
+                else
+                    [v, e]
+                end
+            else
+                [v^pow for (v, pow) in powers(m)]
+            end
         end
     elseif length(x) == 0
         [0]
@@ -101,40 +102,54 @@ end
 SymbolicUtils.isexpr(x::Polyform) = iscall(x)
 SymbolicUtils.iscall(x::Polyform) = !(isone(x.denom) && (!(x.p isa RingElem) || is_gen(x.p) && !haskey(x.fns, x.p)))
 function TermInterface.operation(x::Polyform)
-	!isone(x.denom) && return (/)
-	is_gen(x.p) && haskey(x.fns, x.p) ? x.fns[x.p].op : TermInterface.operation(x.p)
+    !isone(x.denom) && return (/)
+    is_gen(x.p) && haskey(x.fns, x.p) ? x.fns[x.p].op : TermInterface.operation(x.p)
 end
 tonumber(x) = try
-	Int64(x)
+    Int64(x)
 catch
-	Rational(x)
+    Rational(x)
 end
+tonumber(x::Polyform) = x
+
 function TermInterface.arguments(x::Polyform)
-	if !is_one(x.denom)
-		return cleanup.([Polyform(x.p, one(x.p), x.fns), Polyform(x.denom, one(x.p), x.fns)]; recurse=false)
-	end
+    if !is_one(x.denom)
+        return cleanup.([Polyform(x.p, one(x.p), x.fns), Polyform(x.denom, one(x.p), x.fns)]; recurse=false)
+    end
 
-	if is_gen(x.p) && haskey(x.fns, x.p)
-		return x.fns[x.p].args
-	end
+    if is_gen(x.p) && haskey(x.fns, x.p)
+        return x.fns[x.p].args
+    end
 
-	return [p isa UniversalPolyRingElem ? cleanup(Polyform(p, one(p), x.fns); recurse=false) : tonumber(p) for p in TermInterface.arguments(x.p)]
+    return [p isa UniversalPolyRingElem ? cleanup(Polyform(p, one(p), x.fns); recurse=false) : tonumber(p) for p in TermInterface.arguments(x.p)]
 end
 
 # basic operations
+function Oscar.vars(p::Polyform)
+    r = []
+    if p.p isa RingElem
+        r = vcat(r, vars(p.p))
+    end
+    if p.denom isa RingElem
+        r = vcat(r, vars(p.denom))
+    end
+    Set(r) #unique(r)
+end
+
 function cleanup(a; recurse=true)
-	newfns = Dict([s => recurse ? cleanup(t) : t for (s, t) in a.fns if s in vars(a.p) || s in vars(a.denom)])
-	Polyform(a.p, a.denom, newfns)
+    vs = repr.(vars(a))
+    newfns = Dict([s => recurse ? cleanup(t) : t for (s, t) in a.fns if repr(s) in vs])
+    Polyform(a.p, a.denom, newfns)
 end
 
 function updatediv(nom, denom, fns)
-	q, r = divrem(nom, denom)
-	iszero(r) && return cleanup(Polyform(q, one(q), fns); recurse=false)
-	if iszero(q)
-		d = gcd(r, denom)
-		return cleanup(Polyform(r/d, denom/d, fns))
-	end
-	cleanup(Polyform(q*denom + r, denom, fns); recurse=false)
+    q, r = divrem(nom, denom)
+    iszero(r) && return cleanup(Polyform(q, one(q), fns); recurse=false)
+    if iszero(q)
+        d = gcd(r, denom)
+        return cleanup(Polyform(r/d, denom/d, fns))
+    end
+    cleanup(Polyform(q*denom + r, denom, fns); recurse=false)
 end
 
 Base.promote_rule(::Type{T}, ::Type{Polyform}) where T <: Number = Polyform
@@ -146,10 +161,17 @@ Base.:(/)(a::Polyform, b::Polyform) = updatediv(a.p*b.denom, a.denom*b.p, merge(
 Base.:(-)(a::Polyform, b::Polyform) = a + (-b)
 Base.:(-)(a::Polyform) = -1*a
 
-fold(x) = iscall(x) ? operation(x)(fold.(arguments(x))...) : x
+function fold(x)
+    if iscall(x)
+        operation(x)([tonumber(fold(a)) for a in arguments(x)]...)
+    else
+        x
+    end
+end
+
 function Base.iszero(a::Polyform)
-	p = fold(a)
-	p isa Polyform ? iszero(p.p) : iszero(p)
+    p = fold(a)
+    p isa Polyform ? iszero(p.p) : iszero(p)
 end
 Base.:(==)(a::Polyform, b::Polyform) = iszero(a - b)
 
@@ -179,7 +201,7 @@ SymbolicUtils.@number_methods(Polyform, makeop(f, a), makeop(f, a, b), skipbasic
 
 # functionals
 struct Functional
-	s
+    s
 end
 
 (fn::Functional)(x...) = makeop(fn, x...)
