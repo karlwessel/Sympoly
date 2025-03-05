@@ -14,4 +14,6 @@ include("derivatives.jl")
 export integrate, Integral
 include("integrals.jl")
 
+export inspect
+include("inspection.jl")
 end

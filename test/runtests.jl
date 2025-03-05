@@ -123,3 +123,9 @@ end
     f = Functional(:f)
     @test "$(integrate(f(x), x, 0, 1))" == "∫dx[0 to 1](f(x))"
 end
+
+@testset "inspection" begin
+    inspect(x)
+    inspect(x/y)
+    inspect((x+y)/x)
+end
