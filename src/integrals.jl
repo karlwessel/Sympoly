@@ -48,7 +48,7 @@ function integrate(p, x, from, to)
 
     intmap = Dict([cos => sin,
         sin => x -> -cos(x)])
-#
+
     op = operation(p)
     if op == *
         argswithx = filter(hasx, arguments(p))
@@ -57,6 +57,11 @@ function integrate(p, x, from, to)
             return *(makeop(Integ, *(argswithx...)), argswithoutx...)
         end
         return *(Integ(only(argswithx)), argswithoutx...)
+    elseif op == /
+        nom, denom = arguments(p)
+        if !hasx(denom)
+            return Integ(nom) / denom
+        end
     elseif op == +
         return sum(map(Integ, arguments(p)))
     elseif haskey(intmap, op)

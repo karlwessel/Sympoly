@@ -108,6 +108,7 @@ end
     @test 2y + 2 == integrate(x + y, x, 0, 2)
     @test iszero(integrate(sin(2x), x, 0, pi))
     @test 2 == integrate(cos((1//2)*x), x, 0, pi)
+    @test 2/y == integrate(sin(x)/y, x, 0, pi)
 
     a, = @variables a
     @test ((1 - cos(2*a)) / y) == integrate(sin(y*x), x, 0, 2a/y)
