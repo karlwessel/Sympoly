@@ -16,4 +16,4 @@ If in doubt, evaluate eagerly. There is not much reason behind this except that 
  - immediately reevaluate an expression after substitutions
 
 If this principle results in to much performance problems it can still be thrown away. But until then it makes development much easier.
-[![Build Status](https://github.com/karlwessel/Sympoly.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/karlwessel/Sympoly.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![CI](https://github.com/karlwessel/Sympoly/actions/workflows/CI.yml/badge.svg)](https://github.com/karlwessel/Sympoly/actions/workflows/CI.yml)
