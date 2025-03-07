@@ -82,6 +82,8 @@ end
 
     @test 0 == derive(Polyform(2), x)
 
+    @test x+pi isa Polyform
+
     @test 2(x+1) + y - 2 == derive((x+1)^2 + (y-2)*(x), x)
     @test derive(sin(x), x) == cos(x)
     @test derive(sin(y), x) == 0
@@ -121,10 +123,19 @@ end
     @test 2 == integrate(cos((1//2)*x), x, 0, pi)
     @test 2/y == integrate(sin(x)/y, x, 0, pi)
 
-    a, = @variables a
+    @test 2/y == integrate(sinpi(x/pi)/y, x, 0, pi)
+    @test_broken 2 == integrate(cospi((1//2)*x/pi), x, 0, pi)
+
+    a, b = @variables a b
+    f = Functional(:f)
+    @test integrate(derive(f(x), x), x, a, b) == f(b) - f(a)
+    @test integrate(derive(cospi(x), x), x, a, b) == cospi(b) - cospi(a)
+    @test integrate(derive(sinpi(x), x), x, a, b) == sinpi(b) - sinpi(a)
+
+
     @test ((1 - cos(2*a)) / y) == integrate(sin(y*x), x, 0, 2a/y)
 
-    f = Functional(:f)
+
     @test "$(integrate(f(x), x, 0, 1))" == "∫dx[0 to 1](f(x))"
 end
 

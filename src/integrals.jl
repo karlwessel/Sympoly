@@ -47,7 +47,9 @@ function integrate(p, x, from, to)
     isgen(p) && isgen(x) && p.p == x.p && return 1//2*(to^2 - from^2)
 
     intmap = Dict([cos => sin,
-        sin => x -> -cos(x)])
+        sin => x -> -cos(x),
+        cospi => x -> sinpi(x) / pi,
+        sinpi => x -> -cospi(x) / pi])
 
     op = operation(p)
     if op == *
@@ -64,12 +66,17 @@ function integrate(p, x, from, to)
         end
     elseif op == +
         return sum(map(Integ, arguments(p)))
+    elseif op isa Derivative
+        if length(op.ivs) == 1 && x in op.ivs
+            arg = only(arguments(p))
+            return substitute(arg, x => to) - substitute(arg, x => from)
+        end
     elseif haskey(intmap, op)
         y = only(arguments(p))
         intop = intmap[op]
         dy = derive(y, x)
         if !hasx(dy)
-            r = rationalize(intop(substitute(y, x => to))) - rationalize(intop(substitute(y, x => from)))
+            r = tonumber(intop(substitute(y, x => to))) - tonumber(intop(substitute(y, x => from)))
             return r/dy
         end
     end

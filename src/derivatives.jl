@@ -5,7 +5,7 @@ struct Derivative
 end
 (D::Derivative)(x::Number) = 0
 
-Oscar.derivative
+derive(a::Number, iv) = 0
 
 Oscar.derivative(a::Number, x) = 0 # takes care of derive(Polyform(3), x)
 nonrecurse_derive(a::Polyform, iv) = Polyform((derivative(a.p, iv)*a.denom - derivative(a.denom, iv)*a.p), a.denom^2, a.fns)

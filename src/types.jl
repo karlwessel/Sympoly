@@ -8,6 +8,7 @@ end
 
 Polyform(x) = Polyform(x, one(x), Dict([]))
 Polyform(x::AbstractFloat) = Polyform(tonumber(x))
+Polyform(x::AbstractIrrational) = makeop(identity, x)
 
 function Polyform(x::Symbol)
     sx = gen(R, x)
@@ -111,6 +112,7 @@ catch
     Rational(x)
 end
 tonumber(x::Polyform) = x
+tonumber(x::AbstractIrrational) = x
 
 function TermInterface.arguments(x::Polyform)
     if !is_one(x.denom)
@@ -164,6 +166,7 @@ function updatediv(nom::Number, denom, fns)
 end
 
 Base.promote_rule(::Type{T}, ::Type{Polyform}) where T <: Number = Polyform
+Base.promote_rule(::Type{T}, ::Type{Polyform}) where T <: AbstractIrrational = Polyform
 Base.one(a::Polyform) = 1
 Base.zero(a::Polyform) = 0
 Base.:(*)(a::Polyform, b::Polyform) = isone(a.denom) && isone(b.denom) ? Polyform(a.p * b.p, one(a.p), merge(a.fns, b.fns)) : updatediv(a.p*b.p, a.denom*b.denom, merge(a.fns, b.fns))
