@@ -4,21 +4,30 @@ struct Polyform <: Base.Real
     p
     denom
     fns
+    isclean
 end
+symbolmap = Dict{RingElem, Symbol}()
 
-Polyform(x) = Polyform(x, one(x), Dict([]))
+hasfn(p, s::Symbol) = haskey(p.fns, s)
+hasfn(p, s) = hasfn(p, symbolmap[s])
+getfn(p, var::Symbol) = p.fns[var]
+getfn(p, var) = getfn(p, symbolmap[var])
+
+Polyform(x) = Polyform(x, one(x), Dict([]), true)
 Polyform(x::AbstractFloat) = Polyform(tonumber(x))
 Polyform(x::AbstractIrrational) = makeop(identity, x)
+Polyform(p, denom, fns) = Polyform(p, denom, fns, true)
 
 function Polyform(x::Symbol)
     sx = gen(R, x)
+    symbolmap[sx] = x
     Polyform(sx, one(sx), Dict([]))
 end
 
 function Polyform(x::Symbol, fns)
-    p = universal_polynomial_ring(QQ)
-    sx = gen(p, x)
-    Polyform(sx, Dict([sx => fns[x]]))
+    sx = gen(R, x)
+    symbolmap[sx] = x
+    Polyform(sx, one(sx), fns)
 end
 
 function Base.show(io::IO, p::Polyform)
@@ -101,10 +110,10 @@ end
 
 # Terminterface for Polyform
 SymbolicUtils.isexpr(x::Polyform) = iscall(x)
-SymbolicUtils.iscall(x::Polyform) = !(isone(x.denom) && (!(x.p isa RingElem) || is_gen(x.p) && !haskey(x.fns, x.p)))
+SymbolicUtils.iscall(x::Polyform) = !(isone(x.denom) && (!(x.p isa RingElem) || is_gen(x.p) && !hasfn(x, x.p)))
 function TermInterface.operation(x::Polyform)
     !isone(x.denom) && return (/)
-    is_gen(x.p) && haskey(x.fns, x.p) ? x.fns[x.p].op : TermInterface.operation(x.p)
+    is_gen(x.p) && hasfn(x, x.p) ? getfn(x, x.p).op : TermInterface.operation(x.p)
 end
 tonumber(x) = try
     Int64(x)
@@ -119,8 +128,8 @@ function TermInterface.arguments(x::Polyform)
         return cleanup.([Polyform(x.p, one(x.p), x.fns), Polyform(x.denom, one(x.p), x.fns)]; recurse=false)
     end
 
-    if is_gen(x.p) && haskey(x.fns, x.p)
-        return x.fns[x.p].args
+    if is_gen(x.p) && hasfn(x, x.p)
+        return getfn(x, x.p).args
     end
 
     return [p isa UniversalPolyRingElem ? cleanup(Polyform(p, one(p), x.fns); recurse=false) : tonumber(p) for p in TermInterface.arguments(x.p)]
@@ -140,10 +149,70 @@ function Oscar.vars(p::Polyform)
     Set(r) #unique(r)
 end
 
+
+function invars(p, x)
+    p = data(p)
+    R = parent(p)
+    n = nvars(R)
+    idx = findfirst(exponent_vector(data(x), 1) .> 0)
+
+    idx > n && return false
+
+    z = Vector{Int64}(undef, n)
+    for i in 1:length(p)
+        exponent_vector!(z, p, i)
+        !iszero(z[idx]) && return true
+    end
+    return false
+end
+
+function invarsv(p::RingElem, xs::Vector)
+    p = data(p)
+    R = parent(p)
+    n = nvars(R)
+    maxn = maximum(nvars.(parent.(data.(xs))))
+    z = Vector{Int64}(undef, max(maxn, n))
+    idxs = findfirst.([exponent_vector!(z, data(x), 1) .> 0 for x in xs])
+
+    res = zeros(Bool, length(xs))
+
+
+    for i in 1:length(p)
+        exponent_vector!(z, p, i)
+        for (j, idx) in enumerate(idxs)
+            if !res[j] && !iszero(z[idx])
+                res[j] = true
+            end
+        end
+        if all(res[idxs .<= n])
+            return res
+        end
+    end
+    return res
+end
+
+invars(p::Polyform, x) = invars(p.p, x) || invars(p.denom, x)
+invarsv(p::Polyform, x::Vector) = invarsv(p.p, x) .|| invarsv(p.denom, x)
+invars(p::Number, x) = false
+invarsv(p::Number, x) = zeros(Bool, length(x))
+
 function cleanup(a; recurse=true)
-    vs = vars(a)
-    newfns = Dict([s => recurse ? cleanup(t) : t for (s, t) in a.fns if s in vs])
-    Polyform(a.p, a.denom, newfns)
+    isempty(a.fns) && return a
+    if recurse
+        newfns = Dict([s => cleanup(t) for (s, t) in a.fns])
+    else
+        newfns = a.fns
+    end
+    Polyform(a.p, a.denom, newfns, false)
+end
+
+function docleanup(a)
+    #vs = vars(a)
+    isempty(a.fns) && return a
+    syms = collect(keys(a.fns))
+    isin = syms[invarsv(a, gen.(Ref(R), syms))]
+    newfns = Dict([s => a.fns[s] for s in isin])
+    Polyform(a.p, a.denom, newfns, true)
 end
 
 function updatediv(nom, denom, fns)
@@ -187,7 +256,7 @@ function Base.iszero(a::Polyform)
     p = fold(a)
     p isa Polyform ? iszero(p.p) : iszero(p)
 end
-Base.:(==)(a::Polyform, b::Polyform) = iszero(a - b)
+Base.:(==)(a::Polyform, b::Polyform) = a.p == b.p && a.denom == b.denom || iszero(a - b)
 
 # For sorting IVs of derivatives
 Base.isless(a::Polyform, b::Polyform) = isless(a.p, b.p)
@@ -207,8 +276,7 @@ cleanup(a::Fn) = Fn(a.op, map(cleanup, a.args))
 
 function makeop(op, args...)
     name = Symbol(op == identity ? "($(join(args, ",")))" : "$op($(join(args, ",")))")
-    sx = gen(R, name)
-    Polyform(sx, one(sx), Dict([sx => Fn(op, args)]))
+    Polyform(name, Dict([name => Fn(op, args)]))
 end
 
 SymbolicUtils.@number_methods(Polyform, makeop(f, a), makeop(f, a, b), skipbasics)

@@ -12,7 +12,8 @@ nonrecurse_derive(a::Polyform, iv) = Polyform((derivative(a.p, iv)*a.denom - der
 function derive(a::Polyform, iv)
     denom = cleanup(Polyform(a.denom, one(a.p), a.fns); recurse=false)
     if !occursin(denom, iv)
-        p = sum([Polyform(derivative(a.p, k), a.denom, a.fns)*derive(t, iv) for (k, t) in a.fns]; init = Polyform(derivative(a.p, iv.p), a.denom, a.fns))
+        a = docleanup(a)
+        p = sum([Polyform(derivative(a.p, gen(R, k)), a.denom, a.fns)*derive(t, iv) for (k, t) in a.fns]; init = Polyform(derivative(a.p, iv.p), a.denom, a.fns))
     else
         nom = cleanup(Polyform(a.p, one(a.p), a.fns); recurse=false)
         p = (derive(nom, iv)*denom - derive(denom, iv)*nom) / denom^2
@@ -63,7 +64,7 @@ function derive(a::Fn, iv)
     end
 end
 
-isderived(x::Polyform) = all(isderived.(values(x.fns)))
+isderived(x::Polyform) = all(isderived.(values(docleanup(x).fns)))
 isderived(x::Fn) = !(x.op isa Derivative) && all(isderived.(x.args))
 
 function (D::Derivative)(x::Polyform)

@@ -3,7 +3,7 @@ using Test
 import SymbolicUtils: substitute, arguments, operation, iscall, @rule
 import SymbolicUtils.Rewriters: Postwalk, PassThrough
 import Oscar: QQ
-import Sympoly: Polyform, tonumber, isderived, occursin, fold
+import Sympoly: Polyform, tonumber, isderived, occursin, fold, docleanup
 
 x, y = @variables x y
 @testset "Sympoly.jl" begin
@@ -47,7 +47,7 @@ x, y = @variables x y
     @test x == Sympoly.cleanup(x)
     @test sin(x) == Sympoly.cleanup(sin(x))
     @test (sin(x)*x/sin(x)) == x
-    @test isempty((sin(x)*x/sin(x)).fns)
+    @test isempty(docleanup(sin(x)*x/sin(x)).fns)
 
     @test fold(x^2) == x^2
 

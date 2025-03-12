@@ -21,7 +21,9 @@ end
 isgen(p::Polyform) = !iscall(p)
 function occursin(p::Polyform, x)
     if isgen(x)
-        x.p in vars(p) && return true
+        isgen(p) && x.p == p.p && return true
+        invars(p, x.p) && return true
+        p = docleanup(p)
         for fn in values(p.fns)
             occursin(fn, x) && return true
         end
@@ -53,8 +55,10 @@ function integrate(p, x, from, to)
 
     op = operation(p)
     if op == *
-        argswithx = filter(hasx, arguments(p))
-        argswithoutx = setdiff(arguments(p), argswithx)
+        args = arguments(p)
+        withxidx = hasx.(args)
+        argswithx = args[withxidx]
+        argswithoutx = args[(.!)(withxidx)]
         if length(argswithx) > 1
             return *(makeop(Integ, *(argswithx...)), argswithoutx...)
         end
