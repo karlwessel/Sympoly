@@ -7,7 +7,7 @@ end
 
 derive(a::Number, iv) = 0
 
-Oscar.derivative(a::Number, x) = 0 # takes care of derive(Polyform(3), x)
+Nemo.derivative(a::Number, x) = 0 # takes care of derive(Polyform(3), x)
 nonrecurse_derive(a::Polyform, iv) = Polyform((derivative(a.p, iv)*a.denom - derivative(a.denom, iv)*a.p), a.denom^2, a.fns)
 function derive(a::Polyform, iv)
     denom = cleanup(Polyform(a.denom, one(a.p), a.fns); recurse=false)

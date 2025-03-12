@@ -2,7 +2,7 @@ using Sympoly
 using Test
 import SymbolicUtils: substitute, arguments, operation, iscall, @rule
 import SymbolicUtils.Rewriters: Postwalk, PassThrough
-import Oscar: QQ
+import Nemo: QQ
 import Sympoly: Polyform, tonumber, isderived, occursin, fold, docleanup
 
 x, y = @variables x y
@@ -61,7 +61,7 @@ end
 
     @test x + 1 == substitute(sin(x) + 1, sin(x) => x)
     @test 3 == substitute(sin(x) + 1, sin(x) => 2)
-    @test substitute(x + sin(x) + sin(sin(x + 1)), x => 1) == 1 + sin(1) + sin(sin(2))
+    @test isapprox(substitute(x + sin(x) + sin(sin(x + 1)), x => 1), BigInt(1) + sin(BigInt(1)) + sin(sin(BigInt(2))); rtol=1e-16)
     @test sin(2y) + sin(sin(2y)) + sin(sin(sin(2y) + 1)) ==
       substitute(x + sin(x) + sin(sin(x + 1)), x => sin(2y))
 
@@ -124,7 +124,7 @@ end
     @test 2/y == integrate(sin(x)/y, x, 0, pi)
 
     @test 2/y == integrate(sinpi(x/pi)/y, x, 0, pi)
-    @test_broken 2 == integrate(cospi((1//2)*x/pi), x, 0, pi)
+    @test 2 == integrate(cospi((1//2)*x/pi), x, 0, pi)
 
     a, b = @variables a b
     f = Functional(:f)

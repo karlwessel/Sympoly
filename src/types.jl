@@ -102,7 +102,7 @@ function TermInterface.arguments(x::UniversalPolyRingElem)
     elseif length(x) == 0
         [0]
     else
-        ts = [Oscar.term(x, i) for i in 1:length(x)]
+        ts = [Nemo.term(x, i) for i in 1:length(x)]
         return [isconstant(t) ?
                 (coeff(t, 1)) : t for t in ts]
     end
@@ -138,7 +138,7 @@ end
 SymbolicUtils.maketerm(T::Type{<:Polyform}, head, args, metadata) = head(args...)
 
 # basic operations
-function Oscar.vars(p::Polyform)
+function Nemo.vars(p::Polyform)
     r = []
     if p.p isa RingElem
         r = vcat(r, vars(p.p))

@@ -1,5 +1,5 @@
 module Sympoly
-using Oscar
+using Nemo
 import Nemo: exponent_vector!
 using SymbolicUtils
 import TermInterface
