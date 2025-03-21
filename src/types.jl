@@ -218,11 +218,12 @@ end
 function updatediv(nom, denom, fns)
     q, r = divrem(nom, denom)
     iszero(r) && return cleanup(Polyform(q, one(q), fns); recurse=false)
+    d = gcd(r, denom) * gcd(content(r), content(denom))
+    ds = denom/d
     if iszero(q)
-        d = gcd(r, denom) * gcd(content(r), content(denom))
-        return cleanup(Polyform(r/d, denom/d, fns); recurse=false)
+        return cleanup(Polyform(r/d, ds, fns); recurse=false)
     end
-    cleanup(Polyform(q*denom + r, denom, fns); recurse=false)
+    cleanup(Polyform(q*ds + r/d, ds, fns); recurse=false)
 end
 
 function updatediv(nom, denom::Number, fns)
