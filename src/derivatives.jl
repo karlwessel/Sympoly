@@ -33,31 +33,31 @@ function diffrule(fn, x...)
     end
 end
 
-function derive(a::Fn, iv)
+function derive(a::FnCall, iv)
     if a.op == identity
         derive(only(a.args), iv)
-    elseif a.op isa Integral
-        if a.op.iv == iv
+    elseif a.op.op isa Integral
+        if a.op.op.iv == iv
             0
         else
             return a.op(derive(only(a.args), iv))
         end
-    elseif a.op isa Derivative
+    elseif a.op.op isa Derivative
         r = derive(only(a.args), iv)
         # need to check iszero against polynomial instead of polyform,
         # otherwise folding of iszero would recurse into derivatives again
         if iszero(r.p)
             r
         else
-            ivs = vcat(iv, a.op.ivs...)
-            makeop(Derivative(ivs), only(a.args))
+            ivs = vcat(iv, a.op.op.ivs...)
+            makeop(Derivative(ivs), only(a.args); nofn=true)
         end
-    elseif a.op isa Functional
-        sum([derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...)) for arg in a.args])
+    elseif a.op.op isa Functional
+        sum([derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...); nofn=true) for arg in a.args])
     else
-        diff = diffrule(a.op, a.args...)
+        diff = diffrule(a.op.op, a.args...)
         if isnothing(diff)
-            sum([derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...)) for arg in a.args])
+            sum([derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...); nofn=true) for arg in a.args])
         else
             derive(only(a.args), iv) * diff
         end
@@ -65,7 +65,7 @@ function derive(a::Fn, iv)
 end
 
 isderived(x::Polyform) = all(isderived.(values(docleanup(x).fns)))
-isderived(x::Fn) = !(x.op isa Derivative) && all(isderived.(x.args))
+isderived(x::FnCall) = !(x.op.op isa Derivative) && all(isderived.(x.args))
 
 function (D::Derivative)(x::Polyform)
     r = x

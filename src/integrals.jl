@@ -11,11 +11,11 @@ end
 
 Base.show(io::IO, i::Integral) = print(io, "∫d$(i.iv)[$(i.from) to $(i.to)]")
 
-function occursin(f::Fn, x)
+function occursin(f::FnCall, x)
     for a in f.args
         occursin(a, x) && return true
     end
-    return f.op isa Integral && f.op.iv == x
+    return f.op.op isa Integral && f.op.op.iv == x
 end
 
 isgen(p::Polyform) = !iscall(p)
@@ -60,7 +60,7 @@ function integrate(p, x, from, to)
         argswithx = args[withxidx]
         argswithoutx = args[(.!)(withxidx)]
         if length(argswithx) > 1
-            return *(makeop(Integ, *(argswithx...)), argswithoutx...)
+            return *(makeop(Integ, *(argswithx...)), argswithoutx...; nofn=true)
         end
         return *(Integ(only(argswithx)), argswithoutx...)
     elseif op == /
@@ -70,8 +70,8 @@ function integrate(p, x, from, to)
         end
     elseif op == +
         return sum(map(Integ, arguments(p)))
-    elseif op isa Derivative
-        if length(op.ivs) == 1 && x in op.ivs
+    elseif op isa Fn && op.op isa Derivative
+        if length(op.op.ivs) == 1 && x in op.op.ivs
             arg = only(arguments(p))
             return substitute(arg, x => to) - substitute(arg, x => from)
         end
@@ -80,10 +80,10 @@ function integrate(p, x, from, to)
         intop = intmap[op]
         dy = derive(y, x)
         if !hasx(dy)
-            r = tonumber(intop(substitute(y, x => to))) - tonumber(intop(substitute(y, x => from)))
-            return r/dy
+            r = intop(substitute(y, x => to)) - intop(substitute(y, x => from))
+            return tonumber(r/dy)
         end
     end
 
-    return makeop(Integral(x, from, to), p)
+    return makeop(Integral(x, from, to), p; nofn=true)
 end
