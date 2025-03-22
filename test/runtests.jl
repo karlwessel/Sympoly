@@ -150,7 +150,7 @@ end
 
     @test ((1 - cospi(2*a/pi)) / y) == integrate(sinpi(y*x/pi), x, 0, 2a/y)
 
-
+    @test "$(integrate(sin(x)*x, x, 0, 1))" == "∫dx[0 to 1](x*sin(x))"
     @test "$(integrate(f(x), x, 0, 1))" == "∫dx[0 to 1](f(x))"
 end
 

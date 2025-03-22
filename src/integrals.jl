@@ -60,7 +60,7 @@ function integrate(p, x, from, to)
         argswithx = args[withxidx]
         argswithoutx = args[(.!)(withxidx)]
         if length(argswithx) > 1
-            return *(makeop(Integ, *(argswithx...)), argswithoutx...; nofn=true)
+            return *(makeop(Integ, *(argswithx...); nofn=true), argswithoutx...)
         end
         return *(Integ(only(argswithx)), argswithoutx...)
     elseif op == /
