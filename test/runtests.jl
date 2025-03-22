@@ -3,7 +3,7 @@ using Test
 import SymbolicUtils: substitute, arguments, operation, iscall, @rule
 import SymbolicUtils.Rewriters: Postwalk, PassThrough, Prewalk
 import Nemo: QQ
-import Sympoly: Polyform, tonumber, isderived, occursin, fold, docleanup, isconstant, makeconst
+import Sympoly: Polyform, tonumber, isderived, occursin, docleanup, isconstant, makebase, makeop
 
 x, y = @variables x y
 @testset "Sympoly.jl" begin
@@ -49,25 +49,17 @@ x, y = @variables x y
     @test (sin(x)*x/sin(x)) == x
     @test isempty(docleanup(sin(x)*x/sin(x)).fns)
 
-    @test fold(x^2) == x^2
-
     f = Functional(:f)
     @test f(x) isa Polyform
-end
-
-@testset "Irrational constants" begin
-    @test isconstant(Polyform(pi))
-    @test makeconst(Polyform(pi)) == pi
-
-    @test isconstant(Polyform(pi) + 1)
-    @test makeconst(Polyform(pi) + 1) == pi + (1)
-    @test_broken x/2/pi == SymbolicUtils.fold(x/2/pi)
 end
 
 @testset "TermInterface" begin
     @test !iscall(Polyform(0))
     @test !iscall(x-x)
-    @test fold(Polyform(pi)) == Polyform(pi)
+    
+    @test 3 == substitute((x+1).p, x.p => 2)
+    @test 7//3 == substitute((2x+1).p, x.p => 2//3)
+    @test 7 == substitute((y*(2x+1)).p, x.p => 2//3, y.p => 3)
 
     @test 2 == substitute(x/pi, x => 2*Polyform(pi))
 
@@ -88,6 +80,16 @@ end
     @test Postwalk(PassThrough(r))(2+sin(2x)^2) == (1 - cos(4x)) / 2 + 2
 end
 
+@testset "Makeconst" begin
+    @test 2 == makebase(Polyform(2))
+    @test pi == makebase(Polyform(pi))
+    @test 2pi == makebase(2*Polyform(pi))
+    @test 2 == makebase((makeop(cos, 0)+1))
+    @test 3 == makebase((2*makeop(cos, 2*Polyform(pi))+1))
+    
+    @test sin(4*Polyform(pi)) == 0
+end
+
 @testset "derivatives" begin
     f = Functional(:f)
 
@@ -96,6 +98,7 @@ end
     @test isderived(sin(x))
 
     @test 0 == derive(Polyform(2), x)
+    @test 0 == derive(Polyform(pi), x)
 
     @test x+pi isa Polyform
 

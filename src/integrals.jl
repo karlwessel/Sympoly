@@ -39,10 +39,11 @@ function occursin(p::Polyform, x)
     end
 end
 
-occursin(p::Number, x) = p == x
+occursin(p, x) = false
 Base.rationalize(p::Polyform) = p
 
-function integrate(p, x, from, to)
+integrate(p, x, from, to) = integrate(p, x, Polyform(from), Polyform(to))
+function integrate(p, x, from::Polyform, to::Polyform)
     hasx(p) = occursin(p, x)
     Integ = Integral(x, from, to)
     !hasx(p) && return p*(to - from)

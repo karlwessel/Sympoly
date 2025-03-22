@@ -15,9 +15,10 @@ getfn(p, var) = getfn(p, symbolmap[var])
 
 Polyform(x) = Polyform(R(x), one(R), Dict([]), true)
 Polyform(x::AbstractFloat) = Polyform(tonumber(x))
-Polyform(x::Irrational{T}) where T = Polyform(T)
+Polyform(x::Irrational{T}) where T = makeconstant(T)
 Polyform(p, denom, fns) = Polyform(p, denom, fns, true)
 Polyform(x::Polyform) = x
+Polyform(x, fns) = Polyform(R(x), one(R(x)), fns)
 
 function Polyform(x::Symbol)
     sx = gen(R, x)
@@ -73,28 +74,33 @@ function TermInterface.operation(x::UniversalPolyRingElem)
         return (+)
     end
 end
-isconst(p) = length(p) == 0 || length(p) == 1 && isone(monomial(p, 1))
+isconst(p::RingElem) = length(p) == 0 || length(p) == 1 && isone(monomial(p, 1))
 isconst(p::Polyform) = isconst(p.p) && isconst(p.denom)
+isconst(x) = true
+
+coefficient(p::RingElem) = length(p) == 0 ? 0 : tonumber(coeff(p, 1))
+coefficient(p::Polyform) = coefficient(p.p)
+coefficient(x) = x
+
 powers(m) = zip(vars(m), filter(x -> !iszero(x), exponent_vector(m, 1)))
 function TermInterface.arguments(x::UniversalPolyRingElem)
     if length(x) == 1
-        c = coeff(x, 1)
+        c = coefficient(x)
         m = monomial(x, 1)
 
         if !isone(c)
-            Generic.UnivPoly{QQFieldElem}[R(c), m]
+            [c, m]
         else
             if length(vars(m)) == 1
                 v, e = only(powers(m))
-                return Generic.UnivPoly{QQFieldElem}[v, R(e)]
+                return [v, e]
             else
-                return Generic.UnivPoly{QQFieldElem}[v^pow for (v, pow) in powers(m)]
+                return [v^pow for (v, pow) in powers(m)]
             end
         end
     else
         ts = [Nemo.term(x, i) for i in 1:length(x)]
-        return Generic.UnivPoly{QQFieldElem}[isconst(t) ?
-                R(coeff(t, 1)) : t for t in ts]
+        return [isconst(t) ? coefficient(t) : t for t in ts]
     end
 end
 
@@ -120,8 +126,8 @@ tonumber(x::Rational{Int64}) = trynumber(x)
 tonumber(x::Rational{BigInt}) = trynumber(x)
 tonumber(x::Polyform) = x
 tonumber(x::AbstractIrrational) = x
-tonumber(x::Float64) = Int64(x)
-tonumber(x::BigFloat) = Int64(x)
+tonumber(x::Float64) = Int64(round(x, digits=8))
+tonumber(x::BigFloat) = Int64(round(x, digits=8))
 
 
 function TermInterface.arguments(x::Polyform)
@@ -133,44 +139,10 @@ function TermInterface.arguments(x::Polyform)
         return getfn(x, x.p).args
     end
 
-    return [cleanup(Polyform(p, one(p), x.fns); recurse=false) for p in TermInterface.arguments(x.p)]
+    return [cleanup(Polyform(p, x.fns); recurse=false) for p in TermInterface.arguments(x.p)]
 end
 
-isconstant(p) = true
-
-function isconstant(a::Polyform)
-    if iscall(a)
-        all(isconstant(x) for x in arguments(a))
-    else
-        isconst(a) || isdefined(Base, symbolmap[a.p])
-    end
-end
-
-coefficient(p) = length(p) == 0 ? 0 : coeff(p.p, 1)
-
-makeconst(a) = a
-
-function makeconst(a::Polyform)
-    if iscall(a)
-        operation(a)(makeconst.(arguments(a))...)
-    else
-        isconst(a) ? tonumber(coefficient(a.p)) : eval(symbolmap[a.p])
-    end
-end
-
-function trycall(op, args...)
-    cargs = [isconstant(a) ? makeconst(a) : a for a in args]
-    try
-        Polyform(op(cargs...))
-    catch e
-        if e isa InexactError
-            return op(args...)
-        end
-        rethrow(e)
-    end
-end
-
-SymbolicUtils.maketerm(T::Type{<:Polyform}, head, args, metadata) = trycall(head, args...)
+SymbolicUtils.maketerm(T::Type{<:Polyform}, head, args, metadata) = head(args...)
 
 # basic operations
 function Nemo.vars(p::Polyform)
@@ -281,19 +253,16 @@ Base.:(+)(a::Polyform, b::Polyform) = isone(a.denom) && isone(b.denom) ? Polyfor
 Base.:(/)(a::Polyform, b::Polyform) = updatediv(a.p*b.denom, a.denom*b.p, merge(a.fns, b.fns))
 Base.:(-)(a::Polyform, b::Polyform) = a + (-b)
 Base.:(-)(a::Polyform) = -1*a
-Base.:(^)(a::Polyform, e::Polyform) = trycall(^, a, e)
-
-function fold(x)
-    return x # TODO
-    if iscall(x)
-        operation(x)([tonumber(fold(a)) for a in arguments(x)]...)
+function Base.:(^)(a::Polyform, b::Polyform)
+    n = makebase(b)
+    if n isa Polyform
+        makeop(^, a, b)
     else
-        x
+        a ^ tonumber(n)
     end
 end
 
-function Base.iszero(a::Polyform)
-    p = fold(a)
+function Base.iszero(p::Polyform)
     p isa Polyform ? iszero(p.p) : iszero(p)
 end
 Base.:(==)(a::Polyform, b::Polyform) = a.p == b.p && a.denom == b.denom || iszero(a - b)
@@ -312,26 +281,53 @@ struct Fn
     nofn
 end
 
-function tryfn(op, args...)
-    if all(isconstant(x) for x in args)
-        cargs = map(makeconst, args)
-        if any(c isa Polyform for c in cargs)
+makebase(a) = a
+makebase(a::RingElem) = throw("makebase for RingElem?")
+
+function makebase(a::Polyform)
+    subs = Dict()
+    for v in vars(a)
+        s = symbolmap[v]
+        if !haskey(a.fns, s)
+            return a
+        end
+        
+        fn = a.fns[s]
+        
+        cargs = map(makebase, fn.args)
+        if any(x isa Polyform for x in cargs)
+            return a
+        end
+        
+        subs[v] = fn.op(cargs...)
+    end
+    n = substitute(a.p, subs)
+    d = substitute(a.denom, subs)
+    @assert isconst(n)
+    @assert isconst(d)
+    
+    # pi / 1 creates a float, we want to keep it a constant
+    isone(d) ? coefficient(n) : coefficient(n) / coefficient(d)
+end
+
+function tryfn(op, args::Polyform...)
+    cargs = map(makebase, args)
+    
+    if any(x isa Polyform for x in cargs)
+        return makeop(op, args...)
+    end
+    
+    try
+        Polyform(tonumber(op(cargs...)))
+    catch e
+        if e isa InexactError
             return makeop(op, args...)
         end
-        try
-            Polyform(op(cargs...))
-        catch e
-            if e isa InexactError
-                return makeop(op, args...)
-            end
-            rethrow(e)
-        end
-    else
-        return makeop(op, args...)
+        rethrow(e)
     end
 end
 
-(f::Fn)(args...) = f.nofn ? f.op(args...) : tryfn(f.op, args...)
+(f::Fn)(args...) = f.op(args...)
 Base.:(==)(a, b::Fn) = a == b.op
 Base.:(==)(b::Fn, a) = a == b.op
 Base.hash(a::Fn) = hash(a.op)
@@ -342,6 +338,10 @@ struct FnCall
 end
 
 cleanup(a::FnCall) = FnCall(a.op, map(cleanup, a.args))
+
+function makeconstant(symb::Symbol)
+    Polyform(symb, Dict([symb => FnCall(Fn(eval, false), [symb])]))
+end
 
 function makeop(op, args...; nofn=false)
     name = Symbol(op == identity ? "($(join(args, ",")))" : "$op($(join(args, ",")))")

@@ -57,7 +57,12 @@ function derive(a::FnCall, iv)
     else
         diff = diffrule(a.op.op, a.args...)
         if isnothing(diff)
-            sum([derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...); nofn=true) for arg in a.args])
+            dvs = [derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...); nofn=true) for arg in a.args if occursin(a, iv)]
+            if isempty(dvs)
+                return 0
+            else
+                return sum(dvs)
+            end
         else
             derive(only(a.args), iv) * diff
         end
@@ -66,6 +71,7 @@ end
 
 isderived(x::Polyform) = all(isderived.(values(docleanup(x).fns)))
 isderived(x::FnCall) = !(x.op.op isa Derivative) && all(isderived.(x.args))
+isderived(x) = true
 
 function (D::Derivative)(x::Polyform)
     r = x

@@ -4,7 +4,7 @@ import Nemo: exponent_vector!
 using SymbolicUtils
 import TermInterface
 
-export @variables, Functional, substitute
+export @variables, Functional, substitute, Polyform
 include("types.jl")
 
 using Combinatorics
