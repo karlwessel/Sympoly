@@ -7,6 +7,9 @@ end
 
 derive(a::Number, iv) = 0
 
+SymbolicUtils.substitute(D::Derivative, dict; fold=true) = Derivative([substitute(iv, dict) for iv in D.ivs])
+SymbolicUtils.substitute(f::Fn, dict; fold=true) = substitute(f.op, dict)
+
 Nemo.derivative(a::Number, x) = 0 # takes care of derive(Polyform(3), x)
 function localderive(a::Polyform, iv)
     Polyform(derivative(a.p, iv), a.denom, a.fns)
