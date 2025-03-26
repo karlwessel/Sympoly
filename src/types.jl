@@ -245,8 +245,8 @@ end
 Base.promote_rule(::Type{Rational{T}}, ::Type{Polyform}) where T = Polyform
 Base.promote_rule(::Type{T}, ::Type{Polyform}) where T <: Int = Polyform
 Base.promote_rule(::Type{T}, ::Type{Polyform}) where T <: AbstractIrrational = Polyform
-Base.one(a::Polyform) = 1
-Base.zero(a::Polyform) = 0
+Base.one(a::Polyform) = Polyform(1)
+Base.zero(a::Polyform) = Polyform(0)
 mul(a::Polyform, b::Polyform) = isone(a.denom) && isone(b.denom) ? Polyform(a.p * b.p, one(a.p), merge(a.fns, b.fns)) : updatediv(a.p*b.p, a.denom*b.denom, merge(a.fns, b.fns))
 Base.:(*)(a::Polyform, b::Polyform) = isone(a.denom) && isone(b.denom) ? Polyform(a.p * b.p, one(a.p), merge(a.fns, b.fns)) : updatediv(a.p*b.p, a.denom*b.denom, merge(a.fns, b.fns))
 Base.:(+)(a::Polyform, b::Polyform) = isone(a.denom) && isone(b.denom) ? Polyform(a.p + b.p, one(a.p), merge(a.fns, b.fns)) : updatediv(a.p*b.denom + b.p*a.denom, a.denom*b.denom, merge(a.fns, b.fns))

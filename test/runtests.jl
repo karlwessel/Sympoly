@@ -13,6 +13,11 @@ x, y = @variables x y
     @test (/) === operation(x / y)
     @test all(arguments(x / y) .== [x, y])
 
+    @test zero(x) isa Polyform
+    @test zero(x) == 0
+    @test one(x) isa Polyform
+    @test one(x) == 1
+
     @test x + y isa Polyform
     @test x - y isa Polyform
     @test x * y isa Polyform
