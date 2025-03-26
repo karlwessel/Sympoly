@@ -98,6 +98,9 @@ end
 @testset "derivatives" begin
     f = Functional(:f)
 
+    @test occursin(2x, 2x)
+    @test occursin((2x).p, (2x).p)
+
     @test isderived(x)
     @test !isderived(derive(f(x), x))
     @test isderived(sin(x))

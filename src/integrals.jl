@@ -24,22 +24,22 @@ function occursin(p::Polyform, x)
         isgen(p) && x.p == p.p && return true
         invars(p, x.p) && return true
         p = docleanup(p)
-        for fn in values(p.fns)
-            occursin(fn, x) && return true
-        end
-        return false
+        return any(occursin(fn, x) for fn in values(p.fns))
     else
         p == x && return true
-
         !iscall(p) && return false
-        for a in arguments(p)
-            occursin(a, x) && return true
-        end
-        return false
+        return any(occursin(a, x) for a in arguments(p))
     end
 end
 
-occursin(p, x) = false
+function occursin(p::RingElem, x::RingElem)
+    p == x && return true
+    !iscall(p) && return false
+    return any(occursin(a, x) for a in arguments(p))
+end
+
+occursin(p::Number, x) = false
+occursin(p::Symbol, x) = false
 Base.rationalize(p::Polyform) = p
 
 integrate(p, x, from, to) = integrate(p, x, Polyform(from), Polyform(to))
