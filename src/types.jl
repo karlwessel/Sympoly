@@ -275,11 +275,6 @@ SymbolicUtils.isnegative(a::Polyform) = false
 Base.hash(x::Polyform) = hash(x.p, hash(x.denom))
 SymbolicUtils.substitute(x, subs::Pair...) = substitute(x, Dict(subs))
 
-# non polynomial functions
-struct Fn
-    op
-    nofn
-end
 
 makebase(a) = a
 makebase(a::RingElem) = throw("makebase for RingElem?")
@@ -327,11 +322,6 @@ function tryfn(op, args::Polyform...)
     end
 end
 
-(f::Fn)(args...) = f.op(args...)
-Base.:(==)(a, b::Fn) = a == b.op
-Base.:(==)(b::Fn, a) = a == b.op
-Base.hash(a::Fn) = hash(a.op)
-
 struct FnCall
     op
     args
@@ -340,12 +330,12 @@ end
 cleanup(a::FnCall) = FnCall(a.op, map(cleanup, a.args))
 
 function makeconstant(symb::Symbol)
-    Polyform(symb, Dict([symb => FnCall(Fn(eval, false), [symb])]))
+    Polyform(symb, Dict([symb => FnCall(eval, [symb])]))
 end
 
-function makeop(op, args...; nofn=false)
+function makeop(op, args...)
     name = Symbol(op == identity ? "($(join(args, ",")))" : "$op($(join(args, ",")))")
-    Polyform(name, Dict([name => FnCall(Fn(op, nofn), Polyform.(args))]))
+    Polyform(name, Dict([name => FnCall(op, Polyform.(args))]))
 end
 
 SymbolicUtils.@number_methods(Polyform, tryfn(f, a), tryfn(f, a, b), skipbasics)

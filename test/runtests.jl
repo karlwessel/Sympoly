@@ -3,7 +3,7 @@ using Test
 import SymbolicUtils: substitute, arguments, operation, iscall, @rule
 import SymbolicUtils.Rewriters: Postwalk, PassThrough, Prewalk
 import Nemo: QQ
-import Sympoly: Polyform, tonumber, isderived, occursin, docleanup, isconstant, makebase, makeop, Fn
+import Sympoly: Polyform, tonumber, isderived, occursin, docleanup, makebase, makeop, Fn
 
 x, y = @variables x y
 @testset "Sympoly.jl" begin
@@ -80,7 +80,7 @@ end
       substitute(x + sin(x) + sin(sin(x + 1)), x => sin(2y))
 
     f = Functional(:f)
-    @test operation(derive(f(x), x)).op isa Derivative
+    @test operation(derive(f(x), x)) isa Derivative
     @test substitute(derive(f(x), x), x => y) == derive(f(y), y)
 
     @test y + 2 == substitute(f(x) + y, f(x) => 2)

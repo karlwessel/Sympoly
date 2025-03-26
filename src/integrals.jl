@@ -15,7 +15,7 @@ function occursin(f::FnCall, x)
     for a in f.args
         occursin(a, x) && return true
     end
-    return f.op.op isa Integral && f.op.op.iv == x
+    return f.op isa Integral && f.op.iv == x
 end
 
 isgen(p::Polyform) = !iscall(p)
@@ -61,7 +61,7 @@ function integrate(p, x, from::Polyform, to::Polyform)
         argswithx = args[withxidx]
         argswithoutx = args[(.!)(withxidx)]
         if length(argswithx) > 1
-            return *(makeop(Integ, *(argswithx...); nofn=true), argswithoutx...)
+            return *(makeop(Integ, *(argswithx...)), argswithoutx...)
         end
         return *(Integ(only(argswithx)), argswithoutx...)
     elseif op == /
@@ -71,8 +71,8 @@ function integrate(p, x, from::Polyform, to::Polyform)
         end
     elseif op == +
         return sum(map(Integ, arguments(p)))
-    elseif op isa Fn && op.op isa Derivative
-        if length(op.op.ivs) == 1 && x in op.op.ivs
+    elseif op isa Derivative
+        if length(op.ivs) == 1 && x in op.ivs
             arg = only(arguments(p))
             return substitute(arg, x => to) - substitute(arg, x => from)
         end
@@ -86,5 +86,5 @@ function integrate(p, x, from::Polyform, to::Polyform)
         end
     end
 
-    return makeop(Integral(x, from, to), p; nofn=true)
+    return makeop(Integral(x, from, to), p)
 end

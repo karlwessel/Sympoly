@@ -8,7 +8,6 @@ end
 derive(a::Number, iv) = 0
 
 SymbolicUtils.substitute(D::Derivative, dict; fold=true) = Derivative([substitute(iv, dict) for iv in D.ivs])
-SymbolicUtils.substitute(f::Fn, dict; fold=true) = substitute(f.op, dict)
 
 Nemo.derivative(a::Number, x) = 0 # takes care of derive(Polyform(3), x)
 function localderive(a::Polyform, iv)
@@ -43,28 +42,28 @@ end
 function derive(a::FnCall, iv)
     if a.op == identity
         derive(only(a.args), iv)
-    elseif a.op.op isa Integral
-        if a.op.op.iv == iv
+    elseif a.op isa Integral
+        if a.op.iv == iv
             0
         else
             return a.op(derive(only(a.args), iv))
         end
-    elseif a.op.op isa Derivative
+    elseif a.op isa Derivative
         r = derive(only(a.args), iv)
         # need to check iszero against polynomial instead of polyform,
         # otherwise folding of iszero would recurse into derivatives again
         if iszero(r.p)
             r
         else
-            ivs = vcat(iv, a.op.op.ivs...)
-            makeop(Derivative(ivs), only(a.args); nofn=true)
+            ivs = vcat(iv, a.op.ivs...)
+            makeop(Derivative(ivs), only(a.args))
         end
-    elseif a.op.op isa Functional
-        sum([derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...); nofn=true) for arg in a.args])
+    elseif a.op isa Functional
+        sum([derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...)) for arg in a.args])
     else
-        diff = diffrule(a.op.op, a.args...)
+        diff = diffrule(a.op, a.args...)
         if isnothing(diff)
-            dvs = [derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...); nofn=true) for arg in a.args if occursin(a, iv)]
+            dvs = [derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...)) for arg in a.args if occursin(a, iv)]
             if isempty(dvs)
                 return 0
             else
@@ -77,7 +76,7 @@ function derive(a::FnCall, iv)
 end
 
 isderived(x::Polyform) = all(isderived.(values(docleanup(x).fns)))
-isderived(x::FnCall) = !(x.op.op isa Derivative) && all(isderived.(x.args))
+isderived(x::FnCall) = !(x.op isa Derivative) && all(isderived.(x.args))
 isderived(x) = true
 
 function (D::Derivative)(x::Polyform)
