@@ -115,6 +115,8 @@ end
     @test derive(sin(y), x) == 0
     @test derive(identity(2x), x) == 2
 
+    @test derive(sin(2x), 2x) == cos(2x)
+
     @test "$(derive(x/y, x))" == "(1 / y)"
 
     @test derive(f(x,y),x) isa Polyform

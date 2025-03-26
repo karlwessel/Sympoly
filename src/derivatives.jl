@@ -8,12 +8,16 @@ end
 derive(a::Number, iv) = 0
 
 Nemo.derivative(a::Number, x) = 0 # takes care of derive(Polyform(3), x)
-nonrecurse_derive(a::Polyform, iv) = Polyform((derivative(a.p, iv)*a.denom - derivative(a.denom, iv)*a.p), a.denom^2, a.fns)
+function localderive(a::Polyform, iv)
+    Polyform(derivative(a.p, iv), a.denom, a.fns)
+end
+
 function derive(a::Polyform, iv)
+    a == iv && return 1
     denom = cleanup(Polyform(a.denom, one(a.p), a.fns); recurse=false)
     if !occursin(denom, iv)
         a = docleanup(a)
-        p = sum([Polyform(derivative(a.p, gen(R, k)), a.denom, a.fns)*derive(t, iv) for (k, t) in a.fns]; init = Polyform(derivative(a.p, iv.p), a.denom, a.fns))
+        p = sum([localderive(a, gen(R, k))*derive(t, iv) for (k, t) in a.fns]; init = occursin(a.p, iv.p) ? localderive(a, iv.p) : zero(a))
     else
         nom = cleanup(Polyform(a.p, one(a.p), a.fns); recurse=false)
         p = (derive(nom, iv)*denom - derive(denom, iv)*nom) / denom^2
