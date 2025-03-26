@@ -82,6 +82,8 @@ end
     f = Functional(:f)
     @test operation(derive(f(x), x)) isa Derivative
     @test substitute(derive(f(x), x), x => y) == derive(f(y), y)
+    @test substitute(integrate(f(x), x, 0, 1), x => y) == integrate(f(y), y, 0, 1)
+    @test substitute(integrate(f(x), x, y, 1), y => 0) == integrate(f(x), x, 0, 1)
 
     @test y + 2 == substitute(f(x) + y, f(x) => 2)
     @test y + f(2) == substitute(f(x) + y, x => 2)

@@ -9,6 +9,8 @@ function (i::Integral)(x)
     integrate(x, i.iv, i.from, i.to)
 end
 
+SymbolicUtils.substitute(I::Integral, dict; fold=true) = Integral(substitute(I.iv, dict; fold), substitute(I.from, dict; fold), substitute(I.to, dict; fold))
+
 Base.show(io::IO, i::Integral) = print(io, "∫d$(i.iv)[$(i.from) to $(i.to)]")
 
 function occursin(f::FnCall, x)
