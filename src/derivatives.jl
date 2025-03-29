@@ -43,7 +43,9 @@ function derive(a::FnCall, iv)
     if a.op == identity
         derive(only(a.args), iv)
     elseif a.op isa Integral
-        if a.op.iv == iv
+        if occursin(a.op.from, iv) || occursin(a.op.to, iv)
+            makeop(Derivative(iv), makeop(a.op, a.args...))
+        elseif a.op.iv == iv
             0
         else
             return a.op(derive(only(a.args), iv))

@@ -167,6 +167,8 @@ end
     @test integrate(derive(cospi(x), x), x, a, b) == cospi(b) - cospi(a)
     @test integrate(derive(sinpi(x), x), x, a, b) == sinpi(b) - sinpi(a)
 
+    @test derive(integrate(f(x), x, 0, 1), x) == 0
+    @test derive(integrate(f(x), x, 0, x), x) != 0
 
     @test ((1 - cospi(2*a/pi)) / y) == integrate(sinpi(y*x/pi), x, 0, 2a/y)
 
