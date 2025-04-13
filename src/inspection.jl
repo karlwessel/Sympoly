@@ -41,15 +41,16 @@ function inspect(p::Rational{Polyform}, io = stdout)
     else
         q, r = divrem(n.p, d.p)
         if !iszero(q)
-            inspect(Polyform(q, one(n.p), n.fns), io)
-        end
-        if !iszero(r)
-            gc = gcd(r, d.p)* gcd(content(r), content(d.p))
-            !iszero(q) && print(io," + ")
+            inspect(Polyform(q, n.fns), io)
+            if !iszero(r)
+                print(io, " + ")
+                inspect(Polyform(r, n.fns) / d, io)
+            end
+        elseif !iszero(r)
             print(io, "(")
-            inspect(Polyform(r / gc, one(n.p), n.fns), io)
+            inspect(Polyform(r, n.fns), io)
             print(io,") / ( \n ")
-            inspect(Polyform(d.p / gc, one(n.p), n.fns), io)
+            inspect(Polyform(d.p , n.fns), io)
             print(io, "\n)")
         end
     end
