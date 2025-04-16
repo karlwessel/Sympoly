@@ -11,20 +11,19 @@ SymbolicUtils.substitute(D::Derivative, dict; fold=true) = Derivative([substitut
 
 Nemo.derivative(a::Number, x) = 0 # takes care of derive(Polyform(3), x)
 function localderive(a::Polyform, iv)
-    Polyform(derivative(a.p, iv), a.denom, a.fns)
+    Polyform(derivative(a.p, iv), a.fns)
 end
 
 function derive(a::Polyform, iv)
     a == iv && return 1
-    denom = cleanup(Polyform(a.denom, one(a.p), a.fns); recurse=false)
-    if !occursin(denom, iv)
-        a = docleanup(a)
-        p = sum([localderive(a, gen(R, k))*derive(t, iv) for (k, t) in a.fns]; init = occursin(a.p, iv.p) ? localderive(a, iv.p) : zero(a))
-    else
-        nom = cleanup(Polyform(a.p, one(a.p), a.fns); recurse=false)
-        p = (derive(nom, iv)*denom - derive(denom, iv)*nom) / denom^2
-    end
+    a = docleanup(a)
+    p = sum([localderive(a, gen(R, k))*derive(t, iv) for (k, t) in a.fns]; init = occursin(a.p, iv.p) ? localderive(a, iv.p) : zero(a))
     cleanup(p; recurse=false)
+end
+
+function derive(a::Rational{Polyform}, iv)
+    nom, denom = numerator(a), denominator(a)
+    return (derive(nom, iv)*denom - derive(denom, iv)*nom) / denom^2
 end
 
 function diffrule(fn, x...)
@@ -95,7 +94,7 @@ function (D::Derivative)(x::Polyform)
             r = derive(r, iv)
             # need to check iszero against polynomial instead of polyform,
             # otherwise folding of iszero would recurse into derivatives again
-            if iszero(r.p)
+            if r isa Polyform && iszero(r.p) || iszero(numerator(r).p)
                 return r
             end
         end

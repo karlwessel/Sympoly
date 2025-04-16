@@ -3,14 +3,16 @@ using Test
 import SymbolicUtils: substitute, arguments, operation, iscall, @rule
 import SymbolicUtils.Rewriters: Postwalk, PassThrough, Prewalk
 import Nemo: QQ
-import Sympoly: Polyform, tonumber, isderived, occursin, docleanup, makebase, makeop, Fn
+import Sympoly: Polyform, tonumber, isderived, occursin, docleanup, makebase, makeop
 
 x, y = @variables x y
 @testset "Sympoly.jl" begin
     @test 1 // 2 == tonumber(QQ(1 // 2))
     @test 3 == tonumber(QQ(3 // 1))
     @test !iscall(x)
-    @test (/) === operation(x / y)
+    @test iscall(x / y)
+    @test iscall(im*x)
+    @test (//) === operation(x / y)
     @test all(arguments(x / y) .== [x, y])
 
     @test zero(x) isa Polyform
@@ -21,7 +23,7 @@ x, y = @variables x y
     @test x + y isa Polyform
     @test x - y isa Polyform
     @test x * y isa Polyform
-    @test x / y isa Polyform
+    @test x / y isa Rational{Polyform}
 
     @test x + 1 isa Polyform
     @test 1 + x isa Polyform
@@ -29,8 +31,13 @@ x, y = @variables x y
     @test 2x isa Polyform
     @test x*2 isa Polyform
 
-    @test 2 / x isa Polyform
-    @test x / 2 isa Polyform
+    @test 2 / x isa Rational{Polyform}
+    @test x / 2 isa Rational{Polyform}
+
+    @test x/y + y == (x + y^2)/y
+    @test x/y * y == x
+    @test x/y - y == (x - y^2)/y
+    @test x/2/pi == x/pi/2
 
     @test -x isa Polyform
 
@@ -44,15 +51,20 @@ x, y = @variables x y
 
     @test repr(2x/4y) == "(x / 2*y)"
     @test repr(2/4y) == "(1 / 2*y)"
-    @test repr(2x/4) == "1//2*x"
+    @test repr(2x/4) == "(x / 2)"
     
     @test sin(x) isa Polyform
     @test atan(x, y) isa Polyform
+    @test sin(x/pi) isa Polyform
+    @test_broken sin(im*x) isa Complex{Polyform}
+    @test_broken tan(im*x) isa Complex{Polyform}
+    @test atan(x, y) isa Polyform
+    @test atan(x/pi, y) isa Polyform
     
     @test x == Sympoly.cleanup(x)
     @test sin(x) == Sympoly.cleanup(sin(x))
     @test (sin(x)*x/sin(x)) == x
-    @test isempty(docleanup(sin(x)*x/sin(x)).fns)
+    @test isempty(docleanup(numerator(sin(x)*x/sin(x))).fns)
 
     f = Functional(:f)
     @test f(x) isa Polyform
@@ -69,6 +81,7 @@ end
     @test 7 == substitute((y*(2x+1)).p, x.p => 2//3, y.p => 3)
 
     @test 2 == substitute(x/pi, x => 2*Polyform(pi))
+    @test 2im == substitute(im*x, x => 2)
 
     @test ((x^2 + y) * (x^2 + 2)) == substitute(((x + y) * (x + 2)), Dict([x => x^2]))
     @test ((2 + y) * 4) == substitute(((x + y) * (x + 2)), Dict([x => 2]))
@@ -90,6 +103,8 @@ end
 
     r = @rule sin(~x)^2 => (1 - cos(2(~x))) / 2
     @test Postwalk(PassThrough(r))(2+sin(2x)^2) == (1 - cos(4x)) / 2 + 2
+    # test for rational
+    @test Postwalk(PassThrough(r))(2+sin(2x)^2/x) == (1 - cos(4x)) / 2x + 2
 end
 
 @testset "Makeconst" begin
@@ -124,6 +139,9 @@ end
     @test derive(sin(y), x) == 0
     @test derive(identity(2x), x) == 2
 
+    # rational created by derivative
+    @test derive(sin(x/pi), x) == cos(x/pi) / pi
+
     @test derive(sin(2x), 2x) == cos(2x)
 
     @test "$(derive(x/y, x))" == "(1 / y)"
@@ -135,6 +153,8 @@ end
     @test iszero(derive(derive(f(x,y), x), y) - derive(derive(f(x,y), y), x))
 
     @test x*cos(x) + sin(x) == substitute(derive(x*f(x), x), f(x) => sin(x))
+    # derivative returns a rational
+    @test substitute(derive(derive(f(x, y), x), y), f(x, y) => sin(x/pi)*cos(y/pi)) == -cos(x/pi)*sin(y/pi)/pi/pi
 
     @test 4cos(2x)*sin(2x) + 4sin(2x)*cos(2x) + 8x*cos(2x)*cos(2x) - 8x*sin(2x)*sin(2x) - 4sin(2x) == derive(derive(x+x*sin(2x)^2 + sin(2x), x), x)
     @test 1 + sin(2x)^2 + x*4*sin(2x)*cos(2x) + 2cos(2x) == derive(x+x*sin(2x)^2 + sin(2x), x)
@@ -149,6 +169,7 @@ end
     @test !occursin(y, x)
     @test occursin(sin(x), x)
     @test !occursin(sin(y), x)
+    @test occursin(sin(x/pi), x)
 
     @test 2 == integrate(x, x, 0, 2)
     @test 2y == integrate(y, x, 0, 2)
@@ -174,8 +195,8 @@ end
 
     @test ((1 - cospi(2*a/pi)) / y) == integrate(sinpi(y*x/pi), x, 0, 2a/y)
 
-    @test "$(integrate(sin(x)*x, x, 0, 1))" == "∫dx[0 to 1](x*sin(x))"
-    @test "$(integrate(f(x), x, 0, 1))" == "∫dx[0 to 1](f(x))"
+    @test repr(integrate(sin(x)*x, x, 0, 1)) == "∫dx[0 to 1](x*sin(x))"
+    @test repr(integrate(f(x), x, 0, 1)) == "∫dx[0 to 1](f(x))"
 end
 
 @testset "inspection" begin

@@ -33,6 +33,7 @@ function occursin(p::Polyform, x)
         return any(occursin(a, x) for a in arguments(p))
     end
 end
+occursin(p::Rational{Polyform}, x) = occursin(numerator(p), x) || occursin(denominator(p), x)
 
 function occursin(p::RingElem, x::RingElem)
     p == x && return true
@@ -45,11 +46,11 @@ occursin(p::Symbol, x) = false
 Base.rationalize(p::Polyform) = p
 
 integrate(p, x, from, to) = integrate(p, x, Polyform(from), Polyform(to))
-function integrate(p, x, from::Polyform, to::Polyform)
+function integrate(p, x, from::Polylike, to::Polylike)
     hasx(p) = occursin(p, x)
     Integ = Integral(x, from, to)
     !hasx(p) && return p*(to - from)
-    isgen(p) && isgen(x) && p.p == x.p && return 1//2*(to^2 - from^2)
+    !iscall(p) && !iscall(x) && p.p == x.p && return 1//2*(to^2 - from^2)
 
     intmap = Dict([cos => sin,
         sin => x -> -cos(x),
@@ -66,7 +67,7 @@ function integrate(p, x, from::Polyform, to::Polyform)
             return *(makeop(Integ, *(argswithx...)), argswithoutx...)
         end
         return *(Integ(only(argswithx)), argswithoutx...)
-    elseif op == /
+    elseif op in [/, //]
         nom, denom = arguments(p)
         if !hasx(denom)
             return Integ(nom) / denom
