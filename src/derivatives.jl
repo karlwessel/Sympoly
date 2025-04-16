@@ -61,6 +61,12 @@ function derive(a::FnCall, iv)
             makeop(Derivative(ivs), only(a.args))
         end
     elseif a.op isa Functional
+        dvs = [derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...)) for arg in a.args if occursin(a, iv)]
+        if isempty(dvs)
+            return 0
+        else
+            return makeop(Derivative(iv), makeop(a.op, a.args...))#sum(dvs)
+        end
         sum([derive(arg, iv)*makeop(Derivative(arg), a.op(a.args...)) for arg in a.args])
     else
         diff = diffrule(a.op, a.args...)
@@ -69,7 +75,7 @@ function derive(a::FnCall, iv)
             if isempty(dvs)
                 return 0
             else
-                return sum(dvs)
+                return makeop(Derivative(iv), makeop(a.op, a.args...))#sum(dvs)
             end
         else
             derive(only(a.args), iv) * diff

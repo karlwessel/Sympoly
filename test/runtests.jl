@@ -112,6 +112,8 @@ end
     @test !isderived(derive(f(x), x))
     @test isderived(sin(x))
 
+    @test derive(derive(f(2x+2y), x), y) != 0
+
     @test 0 == derive(Polyform(2), x)
     @test 0 == derive(Polyform(pi), x)
 
