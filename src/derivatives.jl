@@ -15,7 +15,7 @@ function localderive(a::Polyform, iv)
 end
 
 function derive(a::Polyform, iv)
-    a == iv && return 1
+    a == iv && return Polyform(1)
     a = docleanup(a)
     p = sum([localderive(a, gen(R, k))*derive(t, iv) for (k, t) in a.fns]; init = occursin(a.p, iv.p) ? localderive(a, iv.p) : zero(a))
     cleanup(p; recurse=false)
