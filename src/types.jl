@@ -266,6 +266,7 @@ Base.signbit(x::Polyform) = false
 Base.checked_mul(x::Polyform, y::Polyform) = x * y
 Base.checked_add(x::Polyform, y::Polyform) = x + y
 Base.checked_sub(x::Polyform, y::Polyform) = x - y
+Base.inv(x::Polyform) = 1/x
 
 function Base.:(^)(a::Polyform, b::Polyform)
     n = makebase(b)
@@ -275,6 +276,8 @@ function Base.:(^)(a::Polyform, b::Polyform)
         a ^ tonumber(n)
     end
 end
+
+Base.:(^)(a::Integer, b::Polyform) = Polyform(a)^b
 
 function Base.iszero(p::Polyform)
     p isa Polyform ? iszero(p.p) : iszero(p)

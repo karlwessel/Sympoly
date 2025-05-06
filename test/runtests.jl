@@ -34,6 +34,10 @@ x, y = @variables x y
     @test 2 / x isa Rational{Polyform}
     @test x / 2 isa Rational{Polyform}
 
+    @test inv(x) == 1/x
+
+    @test 2^Polyform(3) == 8
+
     @test x/y + y == (x + y^2)/y
     @test x/y * y == x
     @test x/y - y == (x - y^2)/y
@@ -138,6 +142,11 @@ end
     @test derive(sin(x), x) == cos(x)
     @test derive(sin(y), x) == 0
     @test derive(identity(2x), x) == 2
+
+    @test derive(sqrt(x), x) == 1/2sqrt(x)
+
+    @test derive(1/x, x) == -1/x^2
+    @test derive(sin(1/x), x) == -1/x^2*cos(1/x)
 
     # rational created by derivative
     @test derive(sin(x/pi), x) == cos(x/pi) / pi
